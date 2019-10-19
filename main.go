@@ -24,7 +24,7 @@ func main() {
 	// str := sb.String()
 	// println(str)
 	// println(len(str))
-	img := downscaleImage(readImage(TEST_IMAGE), 40, 40)
+	img := downscaleImage(readImage(TEST_IMAGE), 80, 40)
 	img.printTo(&sb)
 	printTerm(&sb)
 	println(sb.String())

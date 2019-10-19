@@ -18,7 +18,9 @@ type ImageConvert struct {
 }
 
 func (convert *ImageConvert) set(x, y int, value RGB) {
-	convert.downscaled[x*convert.width+y] = value
+	if idx := x*convert.height + y; idx < len(convert.downscaled) {
+		convert.downscaled[idx] = value
+	} 
 }
 
 func (convert *ImageConvert) samplePixels(x, y int) {
@@ -26,7 +28,7 @@ func (convert *ImageConvert) samplePixels(x, y int) {
 	endX := startX + convert.xScale
 	startY := convert.bounds.Min.Y + y*convert.yScale
 	endY := startY + convert.yScale
-	nPixels := uint32((endX - startX) * (endY - startY)) * 0x101
+	nPixels := uint32((endX-startX)*(endY-startY)) * 0x101
 	if convert.bounds.Max.X < endX {
 		endX = convert.bounds.Max.X
 	}
@@ -45,10 +47,13 @@ func (convert *ImageConvert) samplePixels(x, y int) {
 	r /= nPixels
 	g /= nPixels
 	b /= nPixels
+	r -= r % 10
+	g -= g % 10
+	b -= b % 10
 	convert.set(x, y, RGB{byte(r), byte(g), byte(b)})
 }
 
-func downscaleImage(image image.Image, height int, width int) ImageConvert {
+func downscaleImage(image image.Image, width int, height int) ImageConvert {
 	bounds := image.Bounds()
 	convert := ImageConvert{
 		image:      image,
@@ -61,19 +66,22 @@ func downscaleImage(image image.Image, height int, width int) ImageConvert {
 	convert.xScale = (bounds.Max.X - bounds.Min.X) / width
 	convert.yScale = (bounds.Max.Y - bounds.Min.Y) / height
 
-	for i := 0; i < width; i++ {
-		for j := 0; j < height; j++ {
-			convert.samplePixels(i, j)
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			convert.samplePixels(x, y)
 		}
 	}
 	return convert
 }
 
 func (convert *ImageConvert) printTo(sb *strings.Builder) {
+	var lastRGB RGB
 	for j := 0; j < convert.height; j++ {
 		for i := 0; i < convert.width; i++ {
-			rgb := convert.downscaled[convert.width *i + j]
-			printFg24(sb, rgb)
+			rgb := convert.downscaled[convert.height*i+j]
+			if lastRGB.r != rgb.r || lastRGB.g != rgb.g || lastRGB.b != rgb.b {
+				printFg24(sb, rgb)
+			}
 			sb.WriteRune(rgb.getRune())
 		}
 		sb.WriteRune('\n')
