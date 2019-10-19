@@ -1,31 +1,32 @@
 package main
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 var TEST_IMAGE = "/home/mwestphall/Pictures/squidward.jpg"
+var TEST_GIF = "/home/mwestphall/Pictures/squidward.gif"
+var WIDTH = 120
+var HEIGHT = WIDTH / 2
 
 func main() {
-	var sb strings.Builder
-	printBg24(&sb, RGB{0, 0, 0})
-	// for i := 0; i < 77; i ++ {
-	// 	g := i*510/76
-	// 	if g > 255 {
-	// 		g = 510 - g
-	// 	}
-	// 	rgb := RGB {
-	// 		byte(255 - (i*255)/76),
-	// 		byte(g),
-	// 		byte(i*255/76),
-	// 	}
-	// 	printFg24(&sb, rgb)
-	// 	sb.WriteRune(rgb.getRune())
-	// }
-	// printTerm(&sb)
-	// str := sb.String()
-	// println(str)
-	// println(len(str))
-	img := downscaleImage(readImage(TEST_IMAGE), 80, 40)
-	img.printTo(&sb)
-	printTerm(&sb)
-	println(sb.String())
+	gif := readGif(TEST_GIF)
+	xScale, yScale := getScale(gif.Image[0], WIDTH, HEIGHT)
+	var lastFrame []RGBA
+	for i := range gif.Image {
+		var sb strings.Builder
+		clearScreen(&sb)
+		printBg24(&sb, RGBA{0, 0, 0, 0})
+		moveCursor(&sb, 0, 0)
+		img := downscaleImage(gif.Image[i], WIDTH, HEIGHT, xScale, yScale)
+		if i > 0 {
+			img.downscaled = spliceImages(lastFrame, img.downscaled)
+		}
+		lastFrame = img.downscaled
+		img.printTo(&sb)
+		printTerm(&sb)
+		println(sb.String())
+		time.Sleep(100 * time.Millisecond)
+	}
 }
