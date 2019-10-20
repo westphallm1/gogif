@@ -121,6 +121,7 @@ func (convert *ImageConvert) printTo(sb *strings.Builder, x, y int) {
 		for i := 0; i < convert.width; i++ {
 			rgb := convert.downscaled[convert.height*i+j]
 			if lastRGB.r != rgb.r || lastRGB.g != rgb.g || lastRGB.b != rgb.b {
+				printBg24(sb, RGBA{rgb.r / 2, rgb.g / 2, rgb.b / 2, 0})
 				printFg24(sb, rgb)
 			}
 			sb.WriteRune(rgb.getRune())
@@ -203,4 +204,8 @@ func clearLine(sb *strings.Builder) {
 
 func clearScreen(sb *strings.Builder) {
 	sb.WriteString("\033[2J")
+}
+
+func printBold(sb *strings.Builder) {
+	sb.WriteString("\033[1m")
 }

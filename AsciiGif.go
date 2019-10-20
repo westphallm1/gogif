@@ -48,6 +48,7 @@ func (agif *AsciiGif) printLoop(quit chan struct{}) {
 		lastFrame := agif.blankFrame()
 		for agif.index = range gif.Image {
 			var sb strings.Builder
+			printBold(&sb)
 			printBg24(&sb, RGBA{0, 0, 0, 0})
 			img := downscaleImage(
 				agif.currentFrame(), agif.width, agif.height, xScale, yScale)

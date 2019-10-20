@@ -1,15 +1,17 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 )
 
 var TEST_IMAGE = "/home/mwestphall/Pictures/squidward.jpg"
 var TEST_GIF = "/home/mwestphall/Pictures/squidward.gif"
-var WIDTH = 40
+var WIDTH = 120
 var HEIGHT = WIDTH / 2
 
 var printLock = sync.Mutex{}
@@ -33,8 +35,10 @@ func pollKeyStrokes() {
 	exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
 	// do not display entered characters on the screen
 	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+	exec.Command("tput", "civis").Run()
 	// restore the echoing state when exiting
 	defer exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+	defer exec.Command("tput", "cvvis").Run()
 	var b []byte = make([]byte, 1)
 	index := 1
 	for {
@@ -67,9 +71,13 @@ func main() {
 	clearScreen(&sb)
 	printSynch(&sb)
 	quit := make(chan struct{})
-	for i := range os.Args[1:] {
+	height, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	for i := range os.Args[2:] {
 		gifs[i] = make(chan struct{})
-		agif := NewAsciiGif(os.Args[i+1], WIDTH, HEIGHT, i*(WIDTH+2), 2)
+		agif := NewAsciiGif(os.Args[i+2], height*2, height, 1+i*(height*2+1), 2)
 		go agif.printLoop(gifs[i])
 	}
 	go pollKeyStrokes()
