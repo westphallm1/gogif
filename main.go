@@ -1,9 +1,9 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -33,45 +33,37 @@ func printSync(sb *strings.Builder) {
  * TODO: Cache result
  */
 
-// https://stackoverflow.com/a/17278730
-func pollKeyStrokes() {
-	// disable input buffering
-	exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
-	// do not display entered characters on the screen
-	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
-	exec.Command("tput", "civis").Run()
-	// restore the echoing state when exiting
-	defer exec.Command("stty", "-F", "/dev/tty", "echo").Run()
-	defer exec.Command("tput", "cvvis").Run()
-	var b []byte = make([]byte, 1)
-	for {
-		os.Stdin.Read(b)
-		go searchBar.onKey(b)
-	}
-}
-
-var runningGifs = make(map[string]chan struct{})
+var gifs []AsciiGif
 var searchBar = NewAsciiInput("Search: ", 1, 1, 50)
+var gifReaders = make(chan io.Reader)
+var xIdx = 1
 
 func showPreviews(giphys []GifResponse, height int) {
-	for _, oldId := range runningGifs {
-		close(oldId)
+	for len(gifs) > 0 {
+		last := len(gifs) - 1
+		gifs[last].pause <- struct{}{}
+		gifs[last] = AsciiGif{}
+		gifs = gifs[:last]
 	}
-	xIdx := 1
 	var sb strings.Builder
 	clearLines(&sb, 2, height+2)
 	printSync(&sb)
+	xIdx = 1
 	for _, giphy := range giphys[:3] {
-		agif := NewAsciiGif(readGiphy(giphy.Id), 0, height, xIdx, 2)
-		agif.scaleToHeight()
-		xIdx += agif.width + 1
-		runningGifs[giphy.Id] = make(chan struct{})
-		go agif.printLoop(runningGifs[giphy.Id])
-
+		gifReaders <- downloadGiphy(giphy.Id)
 	}
-
 }
 
+func loadGifs(height int) {
+	for {
+		reader := <-gifReaders
+		agif := NewAsciiGif(reader, 0, height, xIdx, 2)
+		agif.scaleToHeight()
+		xIdx += agif.width + 1
+		gifs = append(gifs, agif)
+		go agif.printLoop()
+	}
+}
 func main() {
 	var sb strings.Builder
 	clearScreen(&sb)
@@ -83,9 +75,13 @@ func main() {
 	}
 	searchBar.draw()
 	searchBar.callback = func(text string) {
+		moveCursor(&sb, 70, 1)
+		sb.WriteString("Searching for: ")
+		sb.WriteString(text)
 		giphys := getGiphyJSON(text)
 		showPreviews(giphys, height)
 	}
+	go loadGifs(height)
 	go pollKeyStrokes()
 	<-quit
 }

@@ -1,6 +1,10 @@
 package main
 
-import "strings"
+import (
+	"os"
+	"os/exec"
+	"strings"
+)
 
 type AsciiInput struct {
 	prompt       string
@@ -27,9 +31,6 @@ func (ainput *AsciiInput) text() string {
 func (ainput *AsciiInput) onKey(key []byte) {
 	var sb strings.Builder
 	start := len(ainput.prompt) + 1
-	if isArrow(key) {
-		return
-	}
 	switch key[0] {
 	case '\n':
 		if ainput.callback != nil {
@@ -82,4 +83,24 @@ func isArrow(key []byte) bool {
 		}
 	}
 	return false
+}
+
+// https://stackoverflow.com/a/17278730
+func pollKeyStrokes() {
+	// disable input buffering
+	exec.Command("stty", "-F", "/dev/tty", "cbreak", "min", "1").Run()
+	// do not display entered characters on the screen
+	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+	exec.Command("tput", "civis").Run()
+	// restore the echoing state when exiting
+	defer exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+	defer exec.Command("tput", "cvvis").Run()
+	var b []byte = make([]byte, 1)
+	for {
+		os.Stdin.Read(b)
+		if isArrow(b) {
+			return
+		}
+		go searchBar.onKey(b)
+	}
 }

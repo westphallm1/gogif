@@ -14,6 +14,8 @@ type AsciiGif struct {
 	x, y          int      // the top left cursor position of the gif
 	width, height int      // the width and height of the gif
 	index         int      // index of the current frame
+	pause         chan struct{}
+	play          chan struct{}
 }
 
 func (agif *AsciiGif) blankFrame() ImageConvert {
@@ -41,7 +43,7 @@ func (agif *AsciiGif) currentFrame() image.Image {
 	return agif.gif.Image[agif.index]
 }
 
-func (agif *AsciiGif) printLoop(quit chan struct{}) {
+func (agif *AsciiGif) printLoop() {
 	gif := agif.gif
 	xScale, yScale := agif.getScale()
 	for {
@@ -60,11 +62,11 @@ func (agif *AsciiGif) printLoop(quit chan struct{}) {
 			if gif.Disposal[agif.index] == 1 {
 				lastFrame = img
 			}
-		}
-		select {
-		case <-quit:
-			return
-		default:
+			select {
+			case <-agif.pause:
+				<-agif.play
+			default:
+			}
 		}
 	}
 
@@ -85,6 +87,8 @@ func NewAsciiGif(reader io.Reader, width, height, x, y int) AsciiGif {
 		y:      y,
 		width:  width,
 		height: height,
+		pause:  make(chan struct{}),
+		play:   make(chan struct{}),
 	}
 }
 
