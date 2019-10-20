@@ -113,16 +113,8 @@ func downscaleImage(image image.Image, width, height, xScale, yScale int) ImageC
 	return convert
 }
 
-func spliceImages(rgb1, rgb2 []RGBA) []RGBA {
-	for i := range rgb1 {
-		if rgb2[i].a < rgb1[i].a-20 {
-			rgb2[i] = rgb1[i]
-		}
-	}
-	return rgb2
-}
-
 func (convert *ImageConvert) printTo(sb *strings.Builder, x, y int) {
+	moveCursor(sb, x, y)
 	var lastRGB RGBA
 	for j := 0; j < convert.height; j++ {
 		moveCursor(sb, y+j, x)
@@ -134,12 +126,6 @@ func (convert *ImageConvert) printTo(sb *strings.Builder, x, y int) {
 			sb.WriteRune(rgb.getRune())
 		}
 	}
-}
-
-func (convert *ImageConvert) toString() string {
-	var sb strings.Builder
-	convert.printTo(&sb, 0, 0)
-	return sb.String()
 }
 
 type RGBA struct {

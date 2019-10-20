@@ -5,7 +5,6 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
-	"time"
 )
 
 var TEST_IMAGE = "/home/mwestphall/Pictures/squidward.jpg"
@@ -27,32 +26,6 @@ func printSynch(sb *strings.Builder) {
  *
  * TODO: Cache result
  */
-func printGif(fileName string, x, y int, quit chan struct{}) {
-	gif := readGif(fileName)
-	xScale, yScale := getScale(gif.Image[0], WIDTH, HEIGHT)
-	for {
-		lastFrame := makeBlankFrame(WIDTH, HEIGHT)
-		for i := range gif.Image {
-			var sb strings.Builder
-			moveCursor(&sb, x, y)
-			printBg24(&sb, RGBA{0, 0, 0, 0})
-			img := downscaleImage(gif.Image[i], WIDTH, HEIGHT, xScale, yScale)
-			img.downscaled = spliceImages(lastFrame.downscaled, img.downscaled)
-			img.printTo(&sb, x, y)
-			printTerm(&sb)
-			printSynch(&sb)
-			time.Sleep(time.Duration(gif.Delay[i]*10) * time.Millisecond)
-			if gif.Disposal[i] == 1 {
-				lastFrame = img
-			}
-		}
-		select {
-		case <-quit:
-			return
-		default:
-		}
-	}
-}
 
 // https://stackoverflow.com/a/17278730
 func pollKeyStrokes() {
@@ -96,7 +69,8 @@ func main() {
 	quit := make(chan struct{})
 	for i := range os.Args[1:] {
 		gifs[i] = make(chan struct{})
-		go printGif(os.Args[i+1], i*(WIDTH+2), 2, gifs[i])
+		agif := NewAsciiGif(os.Args[i+1], WIDTH, HEIGHT, i*(WIDTH+2), 2)
+		go agif.printLoop(gifs[i])
 	}
 	go pollKeyStrokes()
 	<-quit
