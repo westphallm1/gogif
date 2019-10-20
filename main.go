@@ -11,8 +11,6 @@ import (
 
 var TEST_IMAGE = "/home/mwestphall/Pictures/squidward.jpg"
 var TEST_GIF = "/home/mwestphall/Pictures/squidward.gif"
-var WIDTH = 120
-var HEIGHT = WIDTH / 2
 
 var printLock = sync.Mutex{}
 
@@ -40,31 +38,14 @@ func pollKeyStrokes() {
 	defer exec.Command("stty", "-F", "/dev/tty", "echo").Run()
 	defer exec.Command("tput", "cvvis").Run()
 	var b []byte = make([]byte, 1)
-	index := 1
 	for {
 		os.Stdin.Read(b)
-		var sb strings.Builder
-		switch b[0] {
-		case '\n':
-			index = 1
-			moveCursor(&sb, 1, 1)
-			clearLine(&sb)
-		case '\x7F':
-			if index -= 1; index < 1 {
-				index = 1
-			}
-			moveCursor(&sb, 1, index)
-			sb.WriteRune(' ')
-		default:
-			moveCursor(&sb, 1, index)
-			sb.WriteString(string(b[0]))
-			index++
-		}
-		printSynch(&sb)
+		go searchBar.onKey(b)
 	}
 }
 
 var gifs = make(map[int]chan struct{})
+var searchBar = NewAsciiInput("Search: ", 1, 1, 25)
 
 func main() {
 	var sb strings.Builder
@@ -75,9 +56,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	searchBar.draw()
+	xIdx := 1
 	for i := range os.Args[2:] {
 		gifs[i] = make(chan struct{})
-		agif := NewAsciiGif(os.Args[i+2], height*2, height, 1+i*(height*2+1), 2)
+		agif := NewAsciiGif(os.Args[i+2], 0, height, xIdx, 2)
+		agif.scaleToHeight()
+		xIdx += agif.width + 1
 		go agif.printLoop(gifs[i])
 	}
 	go pollKeyStrokes()
