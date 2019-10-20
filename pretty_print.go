@@ -22,17 +22,17 @@ func (convert *ImageConvert) set(x, y int, value RGBA) {
 }
 
 func (convert *ImageConvert) samplePixels(x, y int) {
-	startX := convert.bounds.Min.X + x*convert.xScale
+	startX := x * convert.xScale
 	endX := startX + convert.xScale
-	startY := convert.bounds.Min.Y + y*convert.yScale
+	startY := y * convert.yScale
 	endY := startY + convert.yScale
-	nPixels := uint32((endX-startX)*(endY-startY)) * 0x101
 	if convert.bounds.Max.X < endX {
 		endX = convert.bounds.Max.X
 	}
 	if convert.bounds.Max.Y < endY {
 		endY = convert.bounds.Max.Y
 	}
+	nPixels := uint32((endX-startX)*(endY-startY)) * 0x101
 	var r, g, b, a uint32
 	for i := startX; i < endX; i++ {
 		for j := startY; j < endY; j++ {
@@ -62,6 +62,13 @@ func getScale(image image.Image, newWidth, newHight int) (int, int) {
 	return xScale, yScale
 }
 
+// func makeBlankFrame(width, height int) ImageConvert {
+// 	frame := ImageConvert{
+// 		width:      width,
+// 		height:     height,
+// 		downscaled: make([]RGBA, width*height),
+// 	}
+// }
 func downscaleImage(image image.Image, width, height, xScale, yScale int) ImageConvert {
 	bounds := image.Bounds()
 	convert := ImageConvert{
