@@ -34,8 +34,7 @@ func (ainput *AsciiInput) onKey(key []byte) {
 	switch key[0] {
 	case '\n':
 		if ainput.index == 0 {
-			BigGifIdx++
-			go switchBigGif()
+			go switchBigGif(1)
 		} else if ainput.callback != nil {
 			go ainput.callback(ainput.text())
 		}
@@ -79,6 +78,11 @@ func isArrow(key []byte) bool {
 	if key[0] == '\033' {
 		os.Stdin.Read(key)
 		os.Stdin.Read(key)
+		if key[0] == 'C' {
+			go switchBigGif(1)
+		} else if key[0] == 'D' {
+			go switchBigGif(-1)
+		}
 		return true
 	}
 	return false

@@ -36,8 +36,14 @@ var gifs []AsciiGif
 var searchBar = NewAsciiInput("Search: ", 1, 1, 50)
 var gifReaders = make(chan io.Reader)
 var xIdx = 1
+var firstGiphyToLoad = 0
+var giphys []GifResponse
+var height int
 
-func showPreviews(giphys []GifResponse, height int, start int) {
+func showPreviews() {
+	if firstGiphyToLoad+N_PICS > len(giphys) {
+		return // don't deal with it
+	}
 	for len(gifs) > 0 {
 		last := len(gifs) - 1
 		gifs[last].pause <- struct{}{}
@@ -48,9 +54,10 @@ func showPreviews(giphys []GifResponse, height int, start int) {
 	clearLines(&sb, 2, height+2)
 	printSync(&sb)
 	xIdx = 1
-	for _, giphy := range giphys[start : start+N_PICS] {
+	for _, giphy := range giphys[firstGiphyToLoad : firstGiphyToLoad+N_PICS] {
 		gifReaders <- downloadGiphy(giphy.Id)
 	}
+	firstGiphyToLoad = firstGiphyToLoad + N_PICS
 }
 
 func loadGifs(height int) {
@@ -80,15 +87,21 @@ func showBigGif(other AsciiGif) {
 	BigGif.y = BigGif.height + 3
 	BigGif.height *= 4
 	BigGif.scaleToHeight()
+	var sb strings.Builder
+	clearLines(&sb, BigGif.y, BigGif.height+BigGif.y)
+	printSync(&sb)
 	go BigGif.printLoop()
 }
 
-func switchBigGif() {
+func switchBigGif(delta int) {
+	BigGifIdx += delta
 	if BigGifIdx < 0 {
 		BigGifIdx = 0
 	}
 	if BigGifIdx >= N_PICS {
-		BigGifIdx = N_PICS - 1
+		BigGifIdx = 0
+		go showPreviews()
+		return
 	}
 	showBigGif(gifs[BigGifIdx])
 }
@@ -98,17 +111,19 @@ func main() {
 	clearScreen(&sb)
 	printSync(&sb)
 	quit := make(chan struct{})
-	height, err := strconv.Atoi(os.Args[1])
+	cmdHeight, err := strconv.Atoi(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
+	height = cmdHeight
 	searchBar.draw()
 	searchBar.callback = func(text string) {
 		moveCursor(&sb, 70, 1)
 		sb.WriteString("Searching for: ")
 		sb.WriteString(text)
-		giphys := getGiphyJSON(text)
-		showPreviews(giphys, height, 0)
+		giphys = getGiphyJSON(text)
+		firstGiphyToLoad = 0
+		showPreviews()
 	}
 	go loadGifs(height)
 	go pollKeyStrokes()
