@@ -202,6 +202,12 @@ func clearLine(sb *strings.Builder) {
 	sb.WriteString("\033[K")
 }
 
+func clearLines(sb *strings.Builder, start, stop int) {
+	for i := start; i < stop; i++ {
+		moveCursor(sb, i, 1)
+		clearLine(sb)
+	}
+}
 func clearScreen(sb *strings.Builder) {
 	sb.WriteString("\033[2J")
 }

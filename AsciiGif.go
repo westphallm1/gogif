@@ -3,8 +3,8 @@ package main
 import (
 	"image"
 	"image/gif"
+	"io"
 	"log"
-	"os"
 	"strings"
 	"time"
 )
@@ -55,7 +55,7 @@ func (agif *AsciiGif) printLoop(quit chan struct{}) {
 			img.downscaled = spliceImages(lastFrame.downscaled, img.downscaled)
 			img.printTo(&sb, agif.x, agif.y)
 			printTerm(&sb)
-			printSynch(&sb)
+			printSync(&sb)
 			time.Sleep(time.Duration(gif.Delay[agif.index]*10) * time.Millisecond)
 			if gif.Disposal[agif.index] == 1 {
 				lastFrame = img
@@ -70,13 +70,7 @@ func (agif *AsciiGif) printLoop(quit chan struct{}) {
 
 }
 
-func readGif(filePath string) *gif.GIF {
-	reader, err := os.Open(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer reader.Close()
-	err = nil
+func readGif(reader io.Reader) *gif.GIF {
 	gif, err := gif.DecodeAll(reader)
 	if err != nil {
 		log.Fatal(err)
@@ -84,9 +78,9 @@ func readGif(filePath string) *gif.GIF {
 	return gif
 }
 
-func NewAsciiGif(filePath string, width, height, x, y int) AsciiGif {
+func NewAsciiGif(reader io.Reader, width, height, x, y int) AsciiGif {
 	return AsciiGif{
-		gif:    readGif(filePath),
+		gif:    readGif(reader),
 		x:      x,
 		y:      y,
 		width:  width,

@@ -6,18 +6,24 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 var TEST_IMAGE = "/home/mwestphall/Pictures/squidward.jpg"
 var TEST_GIF = "/home/mwestphall/Pictures/squidward.gif"
 
-var printLock = sync.Mutex{}
+var printQueue chan *strings.Builder
 
-func printSynch(sb *strings.Builder) {
-	printLock.Lock()
-	print(sb.String())
-	printLock.Unlock()
+func printSync(sb *strings.Builder) {
+	if printQueue == nil {
+		printQueue = make(chan *strings.Builder)
+		go func() {
+			for {
+				builder := <-printQueue
+				print(builder.String())
+			}
+		}()
+	}
+	printQueue <- sb
 }
 
 /*
@@ -44,26 +50,41 @@ func pollKeyStrokes() {
 	}
 }
 
-var gifs = make(map[int]chan struct{})
-var searchBar = NewAsciiInput("Search: ", 1, 1, 25)
+var runningGifs = make(map[string]chan struct{})
+var searchBar = NewAsciiInput("Search: ", 1, 1, 50)
+
+func showPreviews(giphys []GifResponse, height int) {
+	for _, oldId := range runningGifs {
+		close(oldId)
+	}
+	xIdx := 1
+	var sb strings.Builder
+	clearLines(&sb, 2, height+2)
+	printSync(&sb)
+	for _, giphy := range giphys[:3] {
+		agif := NewAsciiGif(readGiphy(giphy.Id), 0, height, xIdx, 2)
+		agif.scaleToHeight()
+		xIdx += agif.width + 1
+		runningGifs[giphy.Id] = make(chan struct{})
+		go agif.printLoop(runningGifs[giphy.Id])
+
+	}
+
+}
 
 func main() {
 	var sb strings.Builder
 	clearScreen(&sb)
-	printSynch(&sb)
+	printSync(&sb)
 	quit := make(chan struct{})
 	height, err := strconv.Atoi(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
 	searchBar.draw()
-	xIdx := 1
-	for i := range os.Args[2:] {
-		gifs[i] = make(chan struct{})
-		agif := NewAsciiGif(os.Args[i+2], 0, height, xIdx, 2)
-		agif.scaleToHeight()
-		xIdx += agif.width + 1
-		go agif.printLoop(gifs[i])
+	searchBar.callback = func(text string) {
+		giphys := getGiphyJSON(text)
+		showPreviews(giphys, height)
 	}
 	go pollKeyStrokes()
 	<-quit
