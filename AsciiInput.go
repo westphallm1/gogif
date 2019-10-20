@@ -33,7 +33,10 @@ func (ainput *AsciiInput) onKey(key []byte) {
 	start := len(ainput.prompt) + 1
 	switch key[0] {
 	case '\n':
-		if ainput.callback != nil {
+		if ainput.index == 0 {
+			BigGifIdx++
+			go switchBigGif()
+		} else if ainput.callback != nil {
 			go ainput.callback(ainput.text())
 		}
 		ainput.index = 0
@@ -73,14 +76,10 @@ func NewAsciiInput(prompt string, x, y, length int) AsciiInput {
 
 // TODO this correctly
 func isArrow(key []byte) bool {
-	if len(key) > 0 {
-		for i := range key {
-			for _, j := range [4]rune{'A', 'B', 'C', 'D'} {
-				if key[i] == byte(j) {
-					return true
-				}
-			}
-		}
+	if key[0] == '\033' {
+		os.Stdin.Read(key)
+		os.Stdin.Read(key)
+		return true
 	}
 	return false
 }
@@ -98,9 +97,8 @@ func pollKeyStrokes() {
 	var b []byte = make([]byte, 1)
 	for {
 		os.Stdin.Read(b)
-		if isArrow(b) {
-			return
+		if !isArrow(b) {
+			searchBar.onKey(b)
 		}
-		go searchBar.onKey(b)
 	}
 }

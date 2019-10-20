@@ -92,6 +92,18 @@ func NewAsciiGif(reader io.Reader, width, height, x, y int) AsciiGif {
 	}
 }
 
+func CopyAsciiGif(other AsciiGif) AsciiGif {
+	return AsciiGif{
+		gif:    other.gif,
+		x:      other.x,
+		y:      other.y,
+		width:  other.width,
+		height: other.height,
+		pause:  make(chan struct{}),
+		play:   make(chan struct{}),
+	}
+}
+
 func (agif *AsciiGif) scaleToHeight() {
 	bounds := agif.gif.Image[0].Bounds()
 	agif.width = 2 * agif.height * bounds.Max.X / bounds.Max.Y
