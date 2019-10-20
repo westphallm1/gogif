@@ -62,13 +62,13 @@ func getScale(image image.Image, newWidth, newHight int) (int, int) {
 	return xScale, yScale
 }
 
-// func makeBlankFrame(width, height int) ImageConvert {
-// 	frame := ImageConvert{
-// 		width:      width,
-// 		height:     height,
-// 		downscaled: make([]RGBA, width*height),
-// 	}
-// }
+func makeBlankFrame(width, height int) ImageConvert {
+	return ImageConvert{
+		width:      width,
+		height:     height,
+		downscaled: make([]RGBA, width*height),
+	}
+}
 func downscaleImage(image image.Image, width, height, xScale, yScale int) ImageConvert {
 	bounds := image.Bounds()
 	convert := ImageConvert{
@@ -115,16 +115,17 @@ func downscaleImage(image image.Image, width, height, xScale, yScale int) ImageC
 
 func spliceImages(rgb1, rgb2 []RGBA) []RGBA {
 	for i := range rgb1 {
-		if rgb2[i].a > rgb1[i].a-20 {
-			rgb1[i] = rgb2[i]
+		if rgb2[i].a < rgb1[i].a-20 {
+			rgb2[i] = rgb1[i]
 		}
 	}
-	return rgb1
+	return rgb2
 }
 
-func (convert *ImageConvert) printTo(sb *strings.Builder) {
+func (convert *ImageConvert) printTo(sb *strings.Builder, x, y int) {
 	var lastRGB RGBA
 	for j := 0; j < convert.height; j++ {
+		moveCursor(sb, y+j, x)
 		for i := 0; i < convert.width; i++ {
 			rgb := convert.downscaled[convert.height*i+j]
 			if lastRGB.r != rgb.r || lastRGB.g != rgb.g || lastRGB.b != rgb.b {
@@ -132,13 +133,12 @@ func (convert *ImageConvert) printTo(sb *strings.Builder) {
 			}
 			sb.WriteRune(rgb.getRune())
 		}
-		sb.WriteRune('\n')
 	}
 }
 
 func (convert *ImageConvert) toString() string {
 	var sb strings.Builder
-	convert.printTo(&sb)
+	convert.printTo(&sb, 0, 0)
 	return sb.String()
 }
 
@@ -209,6 +209,10 @@ func moveCursor(sb *strings.Builder, x, y int) {
 	sb.WriteRune(';')
 	sb.WriteString(strconv.FormatInt(int64(y), 10))
 	sb.WriteRune('H')
+}
+
+func clearLine(sb *strings.Builder) {
+	sb.WriteString("\033[K")
 }
 
 func clearScreen(sb *strings.Builder) {
